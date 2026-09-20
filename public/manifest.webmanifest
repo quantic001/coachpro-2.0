@@ -1,0 +1,18 @@
+{
+  "name": "CoachPro 2.0",
+  "short_name": "CoachPro 2.0",
+  "description": "Démo locale de suivi coaching — séances, mesures, photos.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0b1220",
+  "theme_color": "#0b1220",
+  "lang": "fr-CA",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
