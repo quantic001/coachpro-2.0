@@ -46,7 +46,7 @@ export function Photos() {
       <header className="page-header">
         <h2>Photos</h2>
         <p className="muted">
-          Stockage <strong>local uniquement</strong> (IndexedDB). Rien n’est envoyé au serveur.
+          Photos du client actif — stockage <strong>local uniquement</strong> (IndexedDB), jamais sync cloud.
         </p>
       </header>
 

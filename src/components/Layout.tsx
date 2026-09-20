@@ -1,14 +1,19 @@
 import { NavLink, Outlet } from 'react-router-dom';
+import { useData } from '../hooks/DataContext';
+import { ClientPicker } from './ClientPicker';
 
 const links = [
   { to: '/', label: 'Tableau', end: true },
   { to: '/seances', label: 'Séances' },
   { to: '/mesures', label: 'Mesures' },
+  { to: '/historique', label: 'Historique' },
   { to: '/photos', label: 'Photos' },
   { to: '/sauvegarde', label: 'Backup' },
 ];
 
 export function Layout() {
+  const { cloudConfigured, ready, activeClient, syncMeta } = useData();
+
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -18,16 +23,32 @@ export function Layout() {
           </span>
           <div>
             <h1>CoachPro</h1>
-            <p className="tagline">Suivi coaching — démo locale</p>
+            <p className="tagline">
+              {activeClient
+                ? `Suivi — ${activeClient.name}`
+                : 'Suivi coaching multi-clients'}
+            </p>
           </div>
         </div>
+        {ready && <ClientPicker />}
       </header>
+
+      {!cloudConfigured && (
+        <div className="banner warn" role="status">
+          Cloud non configuré — données locales seules
+        </div>
+      )}
+      {cloudConfigured && syncMeta.lastError && (
+        <div className="banner err" role="status">
+          Sync : {syncMeta.lastError}
+        </div>
+      )}
 
       <main className="content">
         <Outlet />
       </main>
 
-      <nav className="bottom-nav" aria-label="Navigation principale">
+      <nav className="bottom-nav nav-6" aria-label="Navigation principale">
         {links.map((l) => (
           <NavLink
             key={l.to}

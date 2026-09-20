@@ -3,6 +3,7 @@ import { Layout } from './components/Layout';
 import { DataProvider } from './hooks/DataContext';
 import { Backup } from './pages/Backup';
 import { Dashboard } from './pages/Dashboard';
+import { History } from './pages/History';
 import { MeasurementForm } from './pages/MeasurementForm';
 import { Measurements } from './pages/Measurements';
 import { Photos } from './pages/Photos';
@@ -24,6 +25,7 @@ export default function App() {
             <Route path="mesures" element={<Measurements />} />
             <Route path="mesures/nouvelle" element={<MeasurementForm />} />
             <Route path="mesures/:id/edit" element={<MeasurementForm />} />
+            <Route path="historique" element={<History />} />
             <Route path="photos" element={<Photos />} />
             <Route path="sauvegarde" element={<Backup />} />
             <Route path="*" element={<Navigate to="/" replace />} />

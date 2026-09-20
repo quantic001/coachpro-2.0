@@ -492,3 +492,140 @@ legend {
   color: #99f6e4;
   background: rgba(45, 212, 191, 0.12);
 }
+
+/* —— Multi-client & sync —— */
+.client-picker {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.client-label {
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.client-picker select,
+.client-create input {
+  flex: 1;
+  min-width: 140px;
+  border-radius: 10px;
+  border: 1px solid var(--card-border);
+  background: #0d1524;
+  padding: 8px 10px;
+  outline: none;
+}
+
+.client-picker select:focus,
+.client-create input:focus {
+  border-color: rgba(45, 212, 191, 0.55);
+  box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.15);
+}
+
+.client-create {
+  display: flex;
+  gap: 6px;
+  width: 100%;
+  align-items: center;
+}
+
+.banner {
+  margin: 0;
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.banner.warn {
+  background: rgba(251, 191, 36, 0.12);
+  border-bottom: 1px solid rgba(251, 191, 36, 0.35);
+  color: #fde68a;
+}
+
+.banner.err {
+  background: rgba(248, 113, 113, 0.12);
+  border-bottom: 1px solid rgba(248, 113, 113, 0.35);
+  color: #fecaca;
+}
+
+.autosave-status {
+  font-size: 0.82rem !important;
+  margin-top: 4px !important;
+}
+
+.bottom-nav.nav-6 {
+  grid-template-columns: repeat(6, 1fr);
+}
+
+.bottom-nav.nav-6 .nav-item {
+  font-size: 0.62rem;
+  padding: 4px 1px;
+}
+
+.table-card {
+  padding-bottom: 8px;
+}
+
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 0 -4px;
+  padding-bottom: 4px;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+  min-width: 720px;
+}
+
+.data-table th,
+.data-table td {
+  border: 1px solid var(--card-border);
+  padding: 6px 8px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.data-table th {
+  background: #0d1524;
+  color: #99f6e4;
+  font-weight: 600;
+  text-align: center;
+  position: sticky;
+  top: 0;
+}
+
+.data-table td.sticky-col,
+.data-table th:first-child {
+  text-align: left;
+  position: sticky;
+  left: 0;
+  background: var(--card);
+  z-index: 1;
+}
+
+.data-table th:first-child {
+  z-index: 2;
+  background: #0d1524;
+}
+
+.data-table .notes-cell {
+  text-align: left;
+  max-width: 160px;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.form code,
+.card code {
+  font-size: 0.85em;
+  background: #0d1524;
+  padding: 1px 4px;
+  border-radius: 4px;
+}

@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@supabase/supabase-js": "2.49.8",
     "date-fns": "^4.4.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
@@ -27,5 +28,5 @@
     "typescript": "~6.0.2",
     "vite": "^8.3.0"
   },
-  "description": "CoachPro 2.0 — démo locale de suivi coaching (fr-CA)"
+  "description": "CoachPro 2.0 \u2014 multi-clients, sync Supabase optionnelle (fr-CA)"
 }

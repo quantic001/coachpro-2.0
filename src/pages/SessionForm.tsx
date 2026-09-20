@@ -1,47 +1,76 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useData } from '../hooks/DataContext';
-import { todayISO } from '../lib/storage';
+import { newId, todayISO } from '../lib/storage';
 
 export function SessionForm() {
-  const { id } = useParams();
+  const { id: routeId } = useParams();
   const navigate = useNavigate();
-  const { sessions, upsertSession } = useData();
-  const existing = id ? sessions.find((s) => s.id === id) : undefined;
+  const { sessions, upsertSession, activeClientId } = useData();
+  const existing = routeId ? sessions.find((s) => s.id === routeId) : undefined;
 
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [date, setDate] = useState(todayISO());
+  const draftId = useRef(existing?.id ?? newId());
+  const [title, setTitle] = useState(existing?.title ?? '');
+  const [content, setContent] = useState(existing?.content ?? '');
+  const [date, setDate] = useState(existing?.date ?? todayISO());
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const timer = useRef<number | null>(null);
+  const seeded = useRef(Boolean(existing));
 
   useEffect(() => {
     if (existing) {
+      draftId.current = existing.id;
       setTitle(existing.title);
       setContent(existing.content);
       setDate(existing.date);
+      seeded.current = true;
     }
   }, [existing]);
 
-  function onSubmit(e: FormEvent) {
-    e.preventDefault();
-    upsertSession({
-      id: existing?.id,
-      title,
-      content,
-      date,
-    });
-    navigate(existing ? `/seances/${existing.id}` : '/seances');
-  }
+  useEffect(() => {
+    if (!activeClientId) return;
+    // Auto-save on every change (debounced) — no Save button required
+    if (timer.current) window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(() => {
+      const hasContent = title.trim() || content.trim() || seeded.current;
+      if (!hasContent && !existing) return;
+      setSaveState('saving');
+      upsertSession({
+        id: draftId.current,
+        title,
+        content,
+        date,
+        clientId: activeClientId,
+      });
+      seeded.current = true;
+      setSaveState('saved');
+      // If we were on /nouvelle, switch URL to edit without remounting awkwardly
+      if (!routeId) {
+        navigate(`/seances/${draftId.current}/edit`, { replace: true });
+      }
+    }, 450);
+    return () => {
+      if (timer.current) window.clearTimeout(timer.current);
+    };
+  }, [title, content, date, activeClientId, upsertSession, existing, navigate, routeId]);
 
   return (
     <div className="page">
       <header className="page-header">
-        <Link to={existing ? `/seances/${existing.id}` : '/seances'} className="back">
+        <Link to={seeded.current ? `/seances/${draftId.current}` : '/seances'} className="back">
           ← Retour
         </Link>
-        <h2>{existing ? 'Modifier la séance' : 'Nouvelle séance'}</h2>
+        <h2>{existing || seeded.current ? 'Séance' : 'Nouvelle séance'}</h2>
+        <p className="autosave-status muted">
+          {saveState === 'saving'
+            ? 'Enregistrement…'
+            : saveState === 'saved'
+              ? 'Enregistré automatiquement'
+              : 'Les modifications sont enregistrées automatiquement'}
+        </p>
       </header>
 
-      <form className="card form" onSubmit={onSubmit}>
+      <div className="card form">
         <label>
           Date
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
@@ -64,10 +93,10 @@ export function SessionForm() {
             placeholder="Notes de séance, ressenti, exercices…"
           />
         </label>
-        <button type="submit" className="btn primary block">
-          Enregistrer
-        </button>
-      </form>
+        <Link className="btn primary block" to={`/seances/${draftId.current}`}>
+          Voir la séance
+        </Link>
+      </div>
     </div>
   );
 }

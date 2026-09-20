@@ -1,7 +1,7 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useData } from '../hooks/DataContext';
-import { todayISO } from '../lib/storage';
+import { newId, todayISO } from '../lib/storage';
 
 type NumField =
   | 'weightLb'
@@ -24,29 +24,34 @@ function parseOpt(raw: string): number | undefined {
 }
 
 export function MeasurementForm() {
-  const { id } = useParams();
+  const { id: routeId } = useParams();
   const navigate = useNavigate();
-  const { measurements, upsertMeasurement } = useData();
-  const existing = id ? measurements.find((m) => m.id === id) : undefined;
+  const { measurements, upsertMeasurement, activeClientId } = useData();
+  const existing = routeId ? measurements.find((m) => m.id === routeId) : undefined;
 
-  const [date, setDate] = useState(todayISO());
-  const [notes, setNotes] = useState('');
+  const draftId = useRef(existing?.id ?? newId());
+  const [date, setDate] = useState(existing?.date ?? todayISO());
+  const [notes, setNotes] = useState(existing?.notes ?? '');
   const [fields, setFields] = useState<Record<NumField, string>>({
-    weightLb: '',
-    bodyFatPct: '',
-    neck: '',
-    shoulders: '',
-    chest: '',
-    waist: '',
-    hips: '',
-    thighL: '',
-    thighR: '',
-    armL: '',
-    armR: '',
+    weightLb: existing?.weightLb?.toString() ?? '',
+    bodyFatPct: existing?.bodyFatPct?.toString() ?? '',
+    neck: existing?.neck?.toString() ?? '',
+    shoulders: existing?.shoulders?.toString() ?? '',
+    chest: existing?.chest?.toString() ?? '',
+    waist: existing?.waist?.toString() ?? '',
+    hips: existing?.hips?.toString() ?? '',
+    thighL: existing?.thighL?.toString() ?? '',
+    thighR: existing?.thighR?.toString() ?? '',
+    armL: existing?.armL?.toString() ?? '',
+    armR: existing?.armR?.toString() ?? '',
   });
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const timer = useRef<number | null>(null);
+  const seeded = useRef(Boolean(existing));
 
   useEffect(() => {
     if (!existing) return;
+    draftId.current = existing.id;
     setDate(existing.date);
     setNotes(existing.notes);
     setFields({
@@ -62,31 +67,58 @@ export function MeasurementForm() {
       armL: existing.armL?.toString() ?? '',
       armR: existing.armR?.toString() ?? '',
     });
+    seeded.current = true;
   }, [existing]);
+
+  useEffect(() => {
+    if (!activeClientId) return;
+    if (timer.current) window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(() => {
+      const anyValue =
+        notes.trim() ||
+        Object.values(fields).some((v) => v.trim()) ||
+        seeded.current;
+      if (!anyValue && !existing) return;
+      setSaveState('saving');
+      upsertMeasurement({
+        id: draftId.current,
+        clientId: activeClientId,
+        date,
+        notes,
+        weightLb: parseOpt(fields.weightLb),
+        bodyFatPct: parseOpt(fields.bodyFatPct),
+        neck: parseOpt(fields.neck),
+        shoulders: parseOpt(fields.shoulders),
+        chest: parseOpt(fields.chest),
+        waist: parseOpt(fields.waist),
+        hips: parseOpt(fields.hips),
+        thighL: parseOpt(fields.thighL),
+        thighR: parseOpt(fields.thighR),
+        armL: parseOpt(fields.armL),
+        armR: parseOpt(fields.armR),
+      });
+      seeded.current = true;
+      setSaveState('saved');
+      if (!routeId) {
+        navigate(`/mesures/${draftId.current}/edit`, { replace: true });
+      }
+    }, 450);
+    return () => {
+      if (timer.current) window.clearTimeout(timer.current);
+    };
+  }, [
+    date,
+    notes,
+    fields,
+    activeClientId,
+    upsertMeasurement,
+    existing,
+    navigate,
+    routeId,
+  ]);
 
   function setField(key: NumField, value: string) {
     setFields((prev) => ({ ...prev, [key]: value }));
-  }
-
-  function onSubmit(e: FormEvent) {
-    e.preventDefault();
-    upsertMeasurement({
-      id: existing?.id,
-      date,
-      notes,
-      weightLb: parseOpt(fields.weightLb),
-      bodyFatPct: parseOpt(fields.bodyFatPct),
-      neck: parseOpt(fields.neck),
-      shoulders: parseOpt(fields.shoulders),
-      chest: parseOpt(fields.chest),
-      waist: parseOpt(fields.waist),
-      hips: parseOpt(fields.hips),
-      thighL: parseOpt(fields.thighL),
-      thighR: parseOpt(fields.thighR),
-      armL: parseOpt(fields.armL),
-      armR: parseOpt(fields.armR),
-    });
-    navigate('/mesures');
   }
 
   return (
@@ -95,17 +127,26 @@ export function MeasurementForm() {
         <Link to="/mesures" className="back">
           ← Mesures
         </Link>
-        <h2>{existing ? 'Modifier la mesure' : 'Nouvelle mesure'}</h2>
+        <h2>{existing || seeded.current ? 'Mesure' : 'Nouvelle mesure'}</h2>
+        <p className="autosave-status muted">
+          {saveState === 'saving'
+            ? 'Enregistrement…'
+            : saveState === 'saved'
+              ? 'Enregistré automatiquement'
+              : 'Les modifications sont enregistrées automatiquement'}
+        </p>
       </header>
 
-      <form className="card form" onSubmit={onSubmit}>
+      <div className="card form">
         <label>
           Date
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
         </label>
 
         <fieldset>
-          <legend>Poids &amp; composition <span className="optional">(optionnel)</span></legend>
+          <legend>
+            Poids &amp; composition <span className="optional">(optionnel)</span>
+          </legend>
           <div className="grid-2">
             <label>
               Poids (lb)
@@ -166,10 +207,10 @@ export function MeasurementForm() {
           />
         </label>
 
-        <button type="submit" className="btn primary block">
-          Enregistrer
-        </button>
-      </form>
+        <Link className="btn primary block" to="/mesures">
+          Retour à la liste
+        </Link>
+      </div>
     </div>
   );
 }

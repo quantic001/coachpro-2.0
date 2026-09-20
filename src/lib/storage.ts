@@ -1,5 +1,19 @@
-import type { AppBackup, Measurement, PhotoMeta, Session } from './types';
-import { PHOTO_DB, PHOTO_STORE, STORAGE_KEYS } from './types';
+import type {
+  AppBackup,
+  AppBackupV1,
+  Client,
+  Measurement,
+  OutboxItem,
+  PhotoMeta,
+  Session,
+  SyncMetaLocal,
+} from './types';
+import {
+  CURRENT_SCHEMA_VERSION,
+  PHOTO_DB,
+  PHOTO_STORE,
+  STORAGE_KEYS,
+} from './types';
 
 function readJson<T>(key: string, fallback: T): T {
   try {
@@ -13,6 +27,14 @@ function readJson<T>(key: string, fallback: T): T {
 
 function writeJson<T>(key: string, value: T): void {
   localStorage.setItem(key, JSON.stringify(value));
+}
+
+export function loadClients(): Client[] {
+  return readJson<Client[]>(STORAGE_KEYS.clients, []);
+}
+
+export function saveClients(clients: Client[]): void {
+  writeJson(STORAGE_KEYS.clients, clients);
 }
 
 export function loadSessions(): Session[] {
@@ -37,6 +59,36 @@ export function loadPhotoMeta(): PhotoMeta[] {
 
 export function savePhotoMeta(meta: PhotoMeta[]): void {
   writeJson(STORAGE_KEYS.photoMeta, meta);
+}
+
+export function loadActiveClientId(): string | null {
+  return localStorage.getItem(STORAGE_KEYS.activeClientId);
+}
+
+export function saveActiveClientId(id: string | null): void {
+  if (id) localStorage.setItem(STORAGE_KEYS.activeClientId, id);
+  else localStorage.removeItem(STORAGE_KEYS.activeClientId);
+}
+
+export function loadOutbox(): OutboxItem[] {
+  return readJson<OutboxItem[]>(STORAGE_KEYS.outbox, []);
+}
+
+export function saveOutbox(items: OutboxItem[]): void {
+  writeJson(STORAGE_KEYS.outbox, items);
+}
+
+export function loadSyncMeta(): SyncMetaLocal {
+  return readJson<SyncMetaLocal>(STORAGE_KEYS.syncMeta, {
+    lastPullAt: null,
+    lastPushAt: null,
+    lastFullSyncAt: null,
+    lastError: null,
+  });
+}
+
+export function saveSyncMeta(meta: SyncMetaLocal): void {
+  writeJson(STORAGE_KEYS.syncMeta, meta);
 }
 
 function openPhotoDb(): Promise<IDBDatabase> {
@@ -137,37 +189,6 @@ export async function clearAllPhotoBlobs(): Promise<void> {
   });
 }
 
-export async function buildBackup(): Promise<AppBackup> {
-  const blobs = await getAllPhotoBlobs();
-  const meta = loadPhotoMeta();
-  return {
-    version: 1,
-    exportedAt: new Date().toISOString(),
-    sessions: loadSessions(),
-    measurements: loadMeasurements(),
-    photos: meta.map((m) => ({
-      ...m,
-      dataUrl: blobs[m.id] ?? '',
-    })),
-  };
-}
-
-export async function restoreBackup(backup: AppBackup): Promise<void> {
-  if (!backup || backup.version !== 1) {
-    throw new Error('Format de sauvegarde non reconnu');
-  }
-  saveSessions(backup.sessions ?? []);
-  saveMeasurements(backup.measurements ?? []);
-  const meta = (backup.photos ?? []).map(({ dataUrl: _d, ...m }) => m);
-  savePhotoMeta(meta);
-  await clearAllPhotoBlobs();
-  for (const photo of backup.photos ?? []) {
-    if (photo.dataUrl) {
-      await savePhotoBlob(photo.id, photo.dataUrl);
-    }
-  }
-}
-
 export function todayISO(): string {
   const d = new Date();
   const y = d.getFullYear();
@@ -198,4 +219,214 @@ export function autoSessionTitle(date: string, content: string): string {
 
 export function newId(): string {
   return crypto.randomUUID();
+}
+
+/** Migrate v1 (single implicit client) → v2 multi-client */
+export function ensureSchemaMigrated(): void {
+  const ver = Number(localStorage.getItem(STORAGE_KEYS.schemaVersion) || '0');
+  if (ver >= CURRENT_SCHEMA_VERSION) {
+    // Ensure at least one active client exists
+    const clients = loadClients().filter((c) => !c.deletedAt);
+    if (clients.length === 0) {
+      const now = new Date().toISOString();
+      const c: Client = {
+        id: newId(),
+        name: 'Client principal',
+        notes: '',
+        createdAt: now,
+        updatedAt: now,
+      };
+      saveClients([c]);
+      saveActiveClientId(c.id);
+    } else if (!loadActiveClientId()) {
+      saveActiveClientId(clients[0].id);
+    }
+    return;
+  }
+
+  const now = new Date().toISOString();
+  let clients = loadClients();
+  let defaultId = loadActiveClientId();
+
+  if (clients.length === 0) {
+    const c: Client = {
+      id: newId(),
+      name: 'Client principal',
+      notes: '',
+      createdAt: now,
+      updatedAt: now,
+    };
+    clients = [c];
+    defaultId = c.id;
+    saveClients(clients);
+  } else if (!defaultId) {
+    defaultId = clients[0].id;
+  }
+
+  const sessions = loadSessions().map((s) => ({
+    ...s,
+    clientId: s.clientId || defaultId!,
+  }));
+  const measurements = loadMeasurements().map((m) => ({
+    ...m,
+    clientId: m.clientId || defaultId!,
+  }));
+  const photos = loadPhotoMeta().map((p) => ({
+    ...p,
+    clientId: p.clientId || defaultId!,
+  }));
+
+  saveSessions(sessions);
+  saveMeasurements(measurements);
+  savePhotoMeta(photos);
+  saveActiveClientId(defaultId);
+  localStorage.setItem(STORAGE_KEYS.schemaVersion, String(CURRENT_SCHEMA_VERSION));
+}
+
+export function enqueueOutbox(
+  entity: OutboxItem['entity'],
+  entityId: string,
+  op: OutboxItem['op'],
+  payload: unknown,
+): void {
+  const now = new Date().toISOString();
+  const box = loadOutbox();
+  // Coalesce: keep only latest op per entity+id
+  const filtered = box.filter((i) => !(i.entity === entity && i.entityId === entityId));
+  filtered.push({
+    id: newId(),
+    entity,
+    entityId,
+    op,
+    payload,
+    updatedAt: now,
+    createdAt: now,
+  });
+  saveOutbox(filtered);
+}
+
+export async function buildBackup(clientId?: string | null): Promise<AppBackup> {
+  const blobs = await getAllPhotoBlobs();
+  const clients = loadClients().filter((c) => !c.deletedAt);
+  const sessions = loadSessions().filter((s) => !s.deletedAt);
+  const measurements = loadMeasurements().filter((m) => !m.deletedAt);
+  const meta = loadPhotoMeta();
+
+  const filterId = clientId || null;
+  const scopedClients = filterId ? clients.filter((c) => c.id === filterId) : clients;
+  const scopedSessions = filterId
+    ? sessions.filter((s) => s.clientId === filterId)
+    : sessions;
+  const scopedMeasurements = filterId
+    ? measurements.filter((m) => m.clientId === filterId)
+    : measurements;
+  const scopedPhotos = filterId ? meta.filter((p) => p.clientId === filterId) : meta;
+
+  return {
+    version: 2,
+    exportedAt: new Date().toISOString(),
+    activeClientId: loadActiveClientId(),
+    clients: scopedClients,
+    sessions: scopedSessions,
+    measurements: scopedMeasurements,
+    photos: scopedPhotos.map((m) => ({
+      ...m,
+      dataUrl: blobs[m.id] ?? '',
+    })),
+  };
+}
+
+export async function restoreBackup(
+  backup: AppBackup | AppBackupV1,
+  mode: 'replace' | 'merge' = 'replace',
+): Promise<void> {
+  if (!backup || (backup.version !== 1 && backup.version !== 2)) {
+    throw new Error('Format de sauvegarde non reconnu');
+  }
+
+  const now = new Date().toISOString();
+  let clients: Client[];
+  let sessions: Session[];
+  let measurements: Measurement[];
+  let photos: Array<PhotoMeta & { dataUrl: string }>;
+  let activeId: string | null = null;
+
+  if (backup.version === 1) {
+    const defaultClient: Client = {
+      id: newId(),
+      name: 'Client importé',
+      notes: '',
+      createdAt: now,
+      updatedAt: now,
+    };
+    clients = [defaultClient];
+    activeId = defaultClient.id;
+    sessions = (backup.sessions ?? []).map((s) => ({
+      ...s,
+      clientId: defaultClient.id,
+    }));
+    measurements = (backup.measurements ?? []).map((m) => ({
+      ...m,
+      clientId: defaultClient.id,
+    }));
+    photos = (backup.photos ?? []).map((p) => ({
+      ...p,
+      clientId: defaultClient.id,
+    }));
+  } else {
+    clients = backup.clients ?? [];
+    sessions = backup.sessions ?? [];
+    measurements = backup.measurements ?? [];
+    photos = backup.photos ?? [];
+    activeId = backup.activeClientId;
+  }
+
+  if (mode === 'replace') {
+    saveClients(clients);
+    saveSessions(sessions);
+    saveMeasurements(measurements);
+    const meta = photos.map(({ dataUrl: _d, ...m }) => m);
+    savePhotoMeta(meta);
+    await clearAllPhotoBlobs();
+    for (const photo of photos) {
+      if (photo.dataUrl) await savePhotoBlob(photo.id, photo.dataUrl);
+    }
+    if (activeId) saveActiveClientId(activeId);
+    else if (clients[0]) saveActiveClientId(clients[0].id);
+  } else {
+    const byId = <T extends { id: string }>(arr: T[]) => {
+      const m = new Map(arr.map((x) => [x.id, x]));
+      return m;
+    };
+    const cMap = byId(loadClients());
+    for (const c of clients) cMap.set(c.id, c);
+    const sMap = byId(loadSessions());
+    for (const s of sessions) sMap.set(s.id, s);
+    const mMap = byId(loadMeasurements());
+    for (const m of measurements) mMap.set(m.id, m);
+    const pMeta = loadPhotoMeta();
+    const pMap = byId(pMeta);
+    for (const p of photos) {
+      const { dataUrl, ...meta } = p;
+      pMap.set(meta.id, meta);
+      if (dataUrl) await savePhotoBlob(meta.id, dataUrl);
+    }
+    saveClients([...cMap.values()]);
+    saveSessions([...sMap.values()]);
+    saveMeasurements([...mMap.values()]);
+    savePhotoMeta([...pMap.values()]);
+    if (activeId) saveActiveClientId(activeId);
+  }
+
+  localStorage.setItem(STORAGE_KEYS.schemaVersion, String(CURRENT_SCHEMA_VERSION));
+  // Queue full push after restore
+  for (const c of loadClients()) {
+    enqueueOutbox('client', c.id, c.deletedAt ? 'delete' : 'upsert', c);
+  }
+  for (const s of loadSessions()) {
+    enqueueOutbox('session', s.id, s.deletedAt ? 'delete' : 'upsert', s);
+  }
+  for (const m of loadMeasurements()) {
+    enqueueOutbox('measurement', m.id, m.deletedAt ? 'delete' : 'upsert', m);
+  }
 }

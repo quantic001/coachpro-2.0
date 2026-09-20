@@ -4,7 +4,7 @@ import { useData } from '../hooks/DataContext';
 import { formatDateFr } from '../lib/storage';
 
 export function Dashboard() {
-  const { sessions, measurements, photoMeta, chartSeries } = useData();
+  const { sessions, measurements, photoMeta, chartSeries, activeClient } = useData();
   const lastSession = sessions[0];
   const lastMeasure = measurements[0];
 
@@ -12,7 +12,11 @@ export function Dashboard() {
     <div className="page">
       <header className="page-header">
         <h2>Tableau de bord</h2>
-        <p className="muted">Vue d’ensemble de votre progression (données locales).</p>
+        <p className="muted">
+          {activeClient
+            ? `Progression de ${activeClient.name} (sauvegarde locale auto).`
+            : 'Sélectionnez ou créez un client.'}
+        </p>
       </header>
 
       <div className="stat-grid">
@@ -36,6 +40,9 @@ export function Dashboard() {
         </Link>
         <Link className="btn" to="/mesures/nouvelle">
           + Mesure
+        </Link>
+        <Link className="btn" to="/historique">
+          Historique
         </Link>
         <Link className="btn" to="/photos">
           Photos
