@@ -557,13 +557,13 @@ legend {
   margin-top: 4px !important;
 }
 
-.bottom-nav.nav-6 {
-  grid-template-columns: repeat(6, 1fr);
+.bottom-nav.nav-5 {
+  grid-template-columns: repeat(5, 1fr);
 }
 
-.bottom-nav.nav-6 .nav-item {
-  font-size: 0.62rem;
-  padding: 4px 1px;
+.bottom-nav.nav-5 .nav-item {
+  font-size: 0.68rem;
+  padding: 6px 2px;
 }
 
 .table-card {
@@ -628,4 +628,52 @@ legend {
   background: #0d1524;
   padding: 1px 4px;
   border-radius: 4px;
+}
+
+.section-hint {
+  margin: 0 0 10px;
+  font-size: 0.85rem;
+}
+
+.metric-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 10px;
+}
+
+.metric-chip {
+  appearance: none;
+  border: 1px solid var(--card-border);
+  background: #0d1524;
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.metric-chip.active {
+  color: #042f2e;
+  background: var(--accent);
+  border-color: transparent;
+}
+
+.metric-chart .chart-card,
+.metric-chart .card.chart-card {
+  /* bare chart inside picker */
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+.row-actions {
+  white-space: nowrap;
+}
+
+.row-actions .btn {
+  margin-right: 4px;
 }

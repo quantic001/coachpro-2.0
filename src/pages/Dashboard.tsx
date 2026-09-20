@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ChartCard } from '../components/ChartCard';
+import { MetricChart } from '../components/MetricChart';
 import { useData } from '../hooks/DataContext';
 import { formatDateFr } from '../lib/storage';
 
@@ -38,20 +38,18 @@ export function Dashboard() {
         <Link className="btn primary" to="/seances/nouvelle">
           + Séance
         </Link>
-        <Link className="btn" to="/mesures/nouvelle">
+        <Link className="btn" to="/mesures">
           + Mesure
         </Link>
-        <Link className="btn" to="/historique">
-          Historique
+        <Link className="btn" to="/mesures#historique">
+          Données antérieures
         </Link>
         <Link className="btn" to="/photos">
           Photos
         </Link>
       </div>
 
-      <ChartCard title="Poids" unit="lb" data={chartSeries.weight} color="#38bdf8" />
-      <ChartCard title="Graisse corporelle" unit="%" data={chartSeries.bodyFat} color="#a78bfa" />
-      <ChartCard title="Tour de taille" unit="po" data={chartSeries.waist} color="#34d399" />
+      <MetricChart series={chartSeries} defaultKey="weight" />
 
       <section className="card">
         <h3>Dernière séance</h3>

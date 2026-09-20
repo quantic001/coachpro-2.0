@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Client, Measurement, PhotoMeta, Session, SyncMetaLocal } from '../lib/types';
+import { buildChartSeries } from '../lib/metrics';
 import {
   autoSessionTitle,
   deletePhotoBlob,
@@ -401,20 +402,10 @@ export function useAppData() {
     return photoMeta.filter((p) => p.clientId === cid);
   }, [photoMeta, activeClient]);
 
-  const chartSeries = useMemo(() => {
-    const byDate = [...scopedMeasurements].sort((a, b) => a.date.localeCompare(b.date));
-    return {
-      weight: byDate
-        .filter((m) => m.weightLb != null)
-        .map((m) => ({ date: m.date, value: m.weightLb as number })),
-      bodyFat: byDate
-        .filter((m) => m.bodyFatPct != null)
-        .map((m) => ({ date: m.date, value: m.bodyFatPct as number })),
-      waist: byDate
-        .filter((m) => m.waist != null)
-        .map((m) => ({ date: m.date, value: m.waist as number })),
-    };
-  }, [scopedMeasurements]);
+  const chartSeries = useMemo(
+    () => buildChartSeries(scopedMeasurements),
+    [scopedMeasurements],
+  );
 
   const syncNow = useCallback(async () => {
     enqueueAllLocalForPush();

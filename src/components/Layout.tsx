@@ -6,7 +6,6 @@ const links = [
   { to: '/', label: 'Tableau', end: true },
   { to: '/seances', label: 'Séances' },
   { to: '/mesures', label: 'Mesures' },
-  { to: '/historique', label: 'Historique' },
   { to: '/photos', label: 'Photos' },
   { to: '/sauvegarde', label: 'Backup' },
 ];
@@ -48,7 +47,7 @@ export function Layout() {
         <Outlet />
       </main>
 
-      <nav className="bottom-nav nav-6" aria-label="Navigation principale">
+      <nav className="bottom-nav nav-5" aria-label="Navigation principale">
         {links.map((l) => (
           <NavLink
             key={l.to}

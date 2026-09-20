@@ -9,7 +9,7 @@ Proposition **indépendante** CoachPro 2.0 — interface **fr-CA**, mobile-first
 - **Multi-clients** : menu déroulant pour sélectionner / créer / renommer / supprimer un client ; séances, mesures et photos sont scopées par client
 - **Persistance locale immédiate** : chaque modification est écrite dans `localStorage` / IndexedDB (pas de bouton « Enregistrer » requis sur les formulaires)
 - **Sync cloud Supabase** (optionnelle) : push/pull des clients, séances et mesures ; **photos locales uniquement** ; file d’attente (outbox) + sync quotidienne de sécurité ; conflits = last-write-wins (`updated_at`)
-- **Données antérieures** : tableau type tableur (dates × mesures) + graphiques poids / % graisse / taille
+- **Mesures** : formulaire du jour, tableau « Données antérieures », et graphiques pour toutes les mesures numériques (poids, % graisse, cou, épaules, poitrine, taille, hanches, cuisses, bras) via un sélecteur
 - **Export Excel (.xls) / CSV** par client ou tous les clients (CSV fr-CA avec `;`)
 - **Export / import JSON** (backup complet, photos en data URL)
 - **Hors ligne** : si `VITE_SUPABASE_*` absents → bandeau *« Cloud non configuré — données locales seules »* et app 100 % locale
