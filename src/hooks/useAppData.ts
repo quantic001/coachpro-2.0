@@ -95,13 +95,12 @@ export function useAppData() {
     reload();
     setReady(true);
 
+    // Always pull+push on launch so cloud inserts (e.g. coach dashboard) appear.
     if (isCloudConfigured && navigator.onLine) {
       if (needsDailySafetySync()) {
         enqueueAllLocalForPush();
-        void runSync('daily');
-      } else if (loadOutbox().length > 0) {
-        void runSync('change');
       }
+      void runSync(needsDailySafetySync() ? 'daily' : 'online');
     }
 
     const onOnline = () => {
