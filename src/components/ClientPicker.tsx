@@ -1,5 +1,9 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useData } from '../hooks/DataContext';
+
+function shortId(id: string): string {
+  return id.slice(0, 6);
+}
 
 export function ClientPicker() {
   const {
@@ -12,6 +16,25 @@ export function ClientPicker() {
   } = useData();
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
+
+  const duplicateNames = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const c of clients) {
+      const key = c.name.trim().toLowerCase();
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    return new Set(
+      [...counts.entries()].filter(([, n]) => n > 1).map(([k]) => k),
+    );
+  }, [clients]);
+
+  function labelFor(c: { id: string; name: string }): string {
+    const key = c.name.trim().toLowerCase();
+    if (duplicateNames.has(key)) {
+      return `${c.name} (${shortId(c.id)})`;
+    }
+    return c.name;
+  }
 
   function onSelect(value: string) {
     if (value === '__new__') {
@@ -84,7 +107,7 @@ export function ClientPicker() {
           >
             {clients.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.name}
+                {labelFor(c)}
               </option>
             ))}
             <option value="__new__">+ Nouveau client…</option>

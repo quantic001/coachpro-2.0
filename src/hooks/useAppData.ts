@@ -10,7 +10,6 @@ import {
   loadActiveClientId,
   loadClients,
   loadMeasurements,
-  loadOutbox,
   loadPhotoMeta,
   loadSessions,
   loadSyncMeta,

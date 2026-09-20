@@ -1,12 +1,37 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { MetricChart } from '../components/MetricChart';
 import { useData } from '../hooks/DataContext';
 import { formatDateFr } from '../lib/storage';
 
 export function Dashboard() {
-  const { sessions, measurements, photoMeta, chartSeries, activeClient } = useData();
+  const {
+    sessions,
+    measurements,
+    photoMeta,
+    chartSeries,
+    activeClient,
+    cloudConfigured,
+    syncMeta,
+    syncStatus,
+    syncNow,
+  } = useData();
   const lastSession = sessions[0];
   const lastMeasure = measurements[0];
+  const [syncing, setSyncing] = useState(false);
+
+  async function onSync() {
+    setSyncing(true);
+    try {
+      await syncNow();
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  const lastSyncLabel = syncMeta.lastFullSyncAt
+    ? new Date(syncMeta.lastFullSyncAt).toLocaleString('fr-CA')
+    : 'jamais';
 
   return (
     <div className="page">
@@ -18,6 +43,33 @@ export function Dashboard() {
             : 'Sélectionnez ou créez un client.'}
         </p>
       </header>
+
+      <section className="card cloud-status">
+        <h3>Cloud</h3>
+        {cloudConfigured ? (
+          <>
+            <p className="muted">
+              Configuré · Dernière sync : {lastSyncLabel}
+            </p>
+            {syncMeta.lastError && (
+              <p className="toast err">{syncMeta.lastError}</p>
+            )}
+            {syncStatus && !syncMeta.lastError && (
+              <p className="muted">{syncStatus}</p>
+            )}
+            <button
+              type="button"
+              className="btn primary"
+              disabled={syncing}
+              onClick={() => void onSync()}
+            >
+              {syncing ? 'Sync…' : 'Synchroniser'}
+            </button>
+          </>
+        ) : (
+          <p className="muted">Non configuré — données locales seules.</p>
+        )}
+      </section>
 
       <div className="stat-grid">
         <div className="stat">
