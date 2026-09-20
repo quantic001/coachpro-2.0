@@ -40,10 +40,25 @@ export function MetricChart({
   return (
     <section className="card chart-card metric-chart">
       <div className="card-head">
-        <h3>{meta.label}</h3>
-        <span className="badge">{meta.unit}</span>
+        <h3>Graphiques</h3>
+        <span className="badge">{available.length} mesures</span>
       </div>
-      <div className="metric-chips" role="tablist" aria-label="Choisir une mesure">
+      <label className="metric-select-label">
+        Courbe affichée
+        <select
+          className="metric-select"
+          value={meta.key}
+          onChange={(e) => setSelected(e.target.value as MetricKey)}
+          aria-label="Choisir la mesure à afficher"
+        >
+          {available.map((m) => (
+            <option key={m.key} value={m.key}>
+              {m.label} ({m.unit})
+            </option>
+          ))}
+        </select>
+      </label>
+      <div className="metric-chips" role="tablist" aria-label="Raccourcis mesures">
         {available.map((m) => (
           <button
             key={m.key}
@@ -56,6 +71,10 @@ export function MetricChart({
             {m.shortLabel}
           </button>
         ))}
+      </div>
+      <div className="card-head chart-subhead">
+        <h3>{meta.label}</h3>
+        <span className="badge">{meta.unit}</span>
       </div>
       <ChartCard title={meta.label} unit={meta.unit} data={data} color={meta.color} bare />
     </section>
