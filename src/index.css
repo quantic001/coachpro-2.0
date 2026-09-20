@@ -590,6 +590,9 @@ legend {
   padding: 6px 8px;
   text-align: right;
   white-space: nowrap;
+  vertical-align: top;
+  height: auto;
+  line-height: 1.25;
 }
 
 .data-table th {
@@ -617,9 +620,23 @@ legend {
 
 .data-table .notes-cell {
   text-align: left;
-  max-width: 160px;
+  max-width: 140px;
+  max-height: 2.8em;
+  overflow: hidden;
   white-space: normal;
   word-break: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.data-table tbody tr {
+  height: auto;
+}
+
+.data-table .row-actions {
+  white-space: nowrap;
+  vertical-align: top;
 }
 
 .form code,
